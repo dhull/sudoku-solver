@@ -9,13 +9,18 @@
 
 constexpr int n = 9;
 constexpr int nn = 3;
-typedef short grid_t[n][n];
+
+// The (partial) solution.  Each cell contains 1-9 if the digit is known or 0
+// if it is unknown.
+typedef char grid_t[n][n];      // 0..9.
+// A bitmask 1 << (n-1) if n is a possible digit for the cell.
+typedef unsigned short notes_t[n][n];   // 0..0x1ff.
 
 long guesses = 0;
 
 typedef struct {
     grid_t grid;
-    grid_t notes;
+    notes_t notes;
 } state_t;
 
 // Find the bit that is set if there is a single bit, 0 otherwise.
@@ -46,7 +51,7 @@ print_grid_linear(const grid_t &grid) {
 }
 
 void
-print_notes(const grid_t &notes) {
+print_notes(const notes_t &notes) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
             if (notes[i][j] >= 0x200) {
@@ -67,7 +72,7 @@ print_notes(const grid_t &notes) {
 inline int valmask(int v) { return 1 << (v - 1); }
 
 void
-update_notes(grid_t &notes, int i, int j, int v) {
+update_notes(notes_t &notes, int i, int j, int v) {
     // a and b are top-left corner of square containing i, j
     int a = (i / nn) * nn;
     int b = (j / nn) * nn;
@@ -84,7 +89,7 @@ update_notes(grid_t &notes, int i, int j, int v) {
 }
 
 void
-initialize_notes(grid_t &notes, const grid_t &grid) {
+initialize_notes(notes_t &notes, const grid_t &grid) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
             notes[i][j] = grid[i][j] > 0 ? 0 : 0x1ff;
@@ -138,9 +143,9 @@ found_blank:
 }
 
 
-void
+bool
 solve(grid_t &grid) {
-    grid_t notes;
+    notes_t notes;
 
     initialize_notes(notes, grid);
 
@@ -173,9 +178,11 @@ solve(grid_t &grid) {
     state_t state;
     memcpy(&state.grid, &grid, sizeof grid);
     memcpy(&state.notes, &notes, sizeof notes);
-    search(state, 0, 0);
+    bool found = search(state, 0, 0);
 
     memcpy(&grid, &state.grid, sizeof grid);
+
+    return found;
 }
 
 
