@@ -236,7 +236,23 @@ sudoku::verify() const {
     return true;
 }
 
-int main(void) {
+void
+skip_comment() {
+    if ((std::cin >> std::ws).peek() == '#') {
+        while (std::cin.get() != '\n') { ; }
+    }
+}
+
+int main(int argc, char **argv) {
+    int ch;
+    while ((ch = getopt(argc, argv, "v")) != -1) {
+        switch (ch) {
+            case 'v': verbose = 1; break;
+        }
+    }
+
+    skip_comment();
+
     int numtests = 0;
     std::cin >> numtests;
 
@@ -244,6 +260,8 @@ int main(void) {
         guesses = 0;
         sudoku sudoku;
         for (int i = 0; i < n * n; ++i) {
+            skip_comment();
+
             int v;
             std::cin >> v;
             if (v < 0 || v > 9) {
