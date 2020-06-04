@@ -150,16 +150,6 @@ found_blank:
         return false;
     }
 
-#if 1
-    int bits_set = __builtin_popcount(bits);
-    // If there's only one bit set then there is only one allowed candidate so
-    // it isn't a "guess."  However if there is more than one bit set, then
-    // we'll count each candidate as a guess.
-    if (bits_set > 1) {
-        guesses += bits_set;
-    }
-#endif
-
     // For each of the allowed candidates for this cell, set its value to the
     // candidate and then attempt to solve the rest of the puzzle.
     for (int k = 0; k < n; ++k) {
@@ -171,6 +161,7 @@ found_blank:
                 *this = search_state;
                 return true;
             }
+            ++guesses;
         }
     }
     return false;
