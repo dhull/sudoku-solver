@@ -26,6 +26,7 @@ public:
     bool solve();
     void set_cell(int i, int j, int v);
     bool search(int i, int j);
+    bool verify() const;
     void print_grid() const;
     void print_notes() const;
 };
@@ -210,6 +211,30 @@ sudoku::solve() {
     return found;
 }
 
+bool
+sudoku::verify() const {
+    for (int k = 0; k < n; ++k) {
+        // a and b are top-left corner of square k.
+        int a = (k / nn) * nn;
+        int b = (k % nn) * nn;
+
+        int r = 0;
+        int c = 0;
+        int s = 0;
+
+        for (int l = 0; l < n; ++l) {
+            r |= 1 << grid[k][l];                       // validate row.
+            c |= 1 << grid[l][k];                       // validate column.
+            s |= 1 << grid[a + (l % nn)][b + (l / nn)]; // Validate square.
+        }
+
+        if (r != 0x3fe || c != 0x3fe || s != 0x3fe) {
+            std::printf("%d r:%x c:%x s:%x\n", k, r, c, s);
+            return false;
+        }
+    }
+    return true;
+}
 
 int main(void) {
     int numtests = 0;
@@ -230,6 +255,7 @@ int main(void) {
 
         // sudoku.print_grid();
         sudoku.solve();
+        if (! sudoku.verify()) { std::cout << "no valid solution found\n"; }
         sudoku.print_grid();
         // sudoku.print_grid_linear();
         std::printf("guesses: %ld\n", guesses);
