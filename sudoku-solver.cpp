@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <assert.h>
+#include <unistd.h>
 
 constexpr int n = 9;
 constexpr int nn = 3;
@@ -16,6 +17,7 @@ typedef char grid_t[n][n];      // 0..9.
 // A bitmask 1 << (n-1) if n is a possible digit for the cell.
 typedef unsigned short notes_t[n][n];   // 0..0x1ff.
 
+int verbose = 0;
 long guesses = 0;
 
 class sudoku {
@@ -172,9 +174,9 @@ found_blank:
 bool
 sudoku::solve() {
 
-#if 1
-    std::printf("unknowns before constraint propagation: %d\n", unknown_count(grid));
-#endif
+    if (verbose) {
+        std::printf("unknowns before constraint propagation: %d\n", unknown_count(grid));
+    }
 
     // Make one or more passes attempting to update the grid with values we
     // are certain about based on initial notes.  For puzzles that are not too
@@ -201,9 +203,9 @@ sudoku::solve() {
 
     // print_grid();
 
-#if 1
-    std::printf("unknowns after constraint propagation: %d\n", unknown_count(grid));
-#endif
+    if (verbose) {
+        std::printf("unknowns after constraint propagation: %d\n", unknown_count(grid));
+    }
 
     // Now do search to find missing values.
     bool found = search(0, 0);
@@ -244,10 +246,9 @@ skip_comment() {
 }
 
 int main(int argc, char **argv) {
-    int ch;
-    while ((ch = getopt(argc, argv, "v")) != -1) {
+    for (int ch = 0; (ch = getopt(argc, argv, "v")) != -1; ) {
         switch (ch) {
-            case 'v': verbose = 1; break;
+        case 'v': verbose = 1; break;
         }
     }
 
@@ -273,10 +274,10 @@ int main(int argc, char **argv) {
 
         // sudoku.print_grid();
         sudoku.solve();
+        if (verbose) { std::printf("guesses: %ld\n", guesses); }
         if (! sudoku.verify()) { std::cout << "no valid solution found\n"; }
         sudoku.print_grid();
         // sudoku.print_grid_linear();
-        std::printf("guesses: %ld\n", guesses);
     }
     return 0;
 }
