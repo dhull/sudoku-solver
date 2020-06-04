@@ -5,7 +5,6 @@
 // Licensed under the MIT license, as described in the accompanying LICENSE file.
 
 #include <iostream>
-#include <string.h>
 
 constexpr int n = 9;
 constexpr int nn = 3;
@@ -18,10 +17,26 @@ typedef unsigned short notes_t[n][n];   // 0..0x1ff.
 
 long guesses = 0;
 
-typedef struct {
+class sudoku {
     grid_t grid;
     notes_t notes;
-} state_t;
+public:
+    sudoku();
+    bool solve();
+    void set_cell(int i, int j, int v);
+    bool search(int i, int j);
+    void print_grid() const;
+    void print_notes() const;
+};
+
+sudoku::sudoku() : grid {0} {
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            notes[i][j] = 0x1ff;
+        }
+    }
+}
+
 
 // Find the bit that is set if there is a single bit, 0 otherwise.
 typedef char findbit_t[0x200]; // == [1 << n].
@@ -34,8 +49,19 @@ initialize_findbit() {
     }
 }
 
+int
+unknown_count(const grid_t &grid) {
+    int unknowns = 0;
+    for (int i = 0; i < n * n; i++) {
+        if (grid[i / n][i % n] == 0) {
+            ++unknowns;
+        }
+    }
+    return unknowns;
+}
+
 void
-print_grid(const grid_t &grid) {
+sudoku::print_grid() const {
     for (int i = 0; i < n * n; ++i) {
         std::cout << static_cast<int>(grid[i / n][i % n]) << (i % n == n-1 ? '\n' : ' ');
     }
@@ -51,19 +77,17 @@ print_grid_linear(const grid_t &grid) {
 }
 
 void
-print_notes(const notes_t &notes) {
+sudoku::print_notes() const {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
-            if (notes[i][j] >= 0x200) {
-                std::printf("bad notes[%d][%d] = %x\n", i, j, notes[i][j]);
-            }
+            assert(notes[i][j] < 0x200);
             for (int k = 0; k < 9; k++) {
-                if (notes[i][j] & (1 << k)) { std::cout << (k+1); } else { std::cout << ' '; }
+                std::cout << static_cast<char>((notes[i][j] & (1 << k)) ? '1' + k : ' ');
             }
             std::cout << (j == n-1 ? "\n" : " | ");
         }
         if (i % nn == nn - 1 && i != n - 1) {
-            std::cout << "----------+----------------------------------------------------------------------------------------------\n";
+            std::cout << "----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+----------\n";
         }
     }
     std::cout << '\n';
@@ -72,14 +96,19 @@ print_notes(const notes_t &notes) {
 inline int valmask(int v) { return 1 << (v - 1); }
 
 void
-update_notes(notes_t &notes, int i, int j, int v) {
+sudoku::set_cell(int i, int j, int v) {
+    if (v == 0) { return; }
+
+    // Update the cell value.
+    grid[i][j] = v;
+    notes[i][j] = 0;
+
     // a and b are top-left corner of square containing i, j
     int a = (i / nn) * nn;
     int b = (j / nn) * nn;
 
+    // Update the notes for the cells row, column, and square.
     int vmask = ~ valmask(v) & 0x1ff;
-    // std::printf("  vmask[%d][%d] = %d -> %x\n", i, j, v, vmask);
-
     for (int k = 0; k < n; ++k) {
         // std::printf("  vmask: %x %x -> %x\n", vmask, notes[i][k], notes[i][k] & vmask);
         notes[i][k] &= vmask;                   // propagate to row.
@@ -88,27 +117,13 @@ update_notes(notes_t &notes, int i, int j, int v) {
     }
 }
 
-void
-initialize_notes(notes_t &notes, const grid_t &grid) {
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            notes[i][j] = grid[i][j] > 0 ? 0 : 0x1ff;
-        }
-    }
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            if (grid[i][j] > 0) {
-                update_notes(notes, i, j, grid[i][j]);
-            }
-        }
-    }
-}
 
 bool
-search(state_t &state, int i, int j) {
+sudoku::search(int i, int j) {
+    // Find a blank cell starting from grid[i][j].
     for ( ; i < n; ++i) {
         for ( ; j < n; ++j) {
-            if (state.grid[i][j] == 0) {
+            if (grid[i][j] == 0) {
                 goto found_blank;
             }
         }
@@ -118,23 +133,33 @@ search(state_t &state, int i, int j) {
     return true;
 
 found_blank:
-    int bits = state.notes[i][j];
+    int bits = notes[i][j];
+
+    // Fast fail: if bits is 0 then we have found a blank cell but there are
+    // no allowed candidates for it.
+    if (bits == 0) {
+        return false;
+    }
 
 #if 1
     int bits_set = __builtin_popcount(bits);
+    // If there's only one bit set then there is only one allowed candidate so
+    // it isn't a "guess."  However if there is more than one bit set, then
+    // we'll count each candidate as a guess.
     if (bits_set > 1) {
         guesses += bits_set;
     }
 #endif
 
+    // For each of the allowed candidates for this cell, set its value to the
+    // candidate and then attempt to solve the rest of the puzzle.
     for (int k = 0; k < n; ++k) {
         if (bits & (1 << k)) {
-            state_t search_state = state;
+            sudoku search_state = *this;
             int v = k + 1;
-            search_state.grid[i][j] = v;
-            update_notes(search_state.notes, i, j, v);
-            if (search(search_state, i, j)) {
-                state = search_state;
+            search_state.set_cell(i, j, v);
+            if (search_state.search(i, j)) {
+                *this = search_state;
                 return true;
             }
         }
@@ -144,27 +169,28 @@ found_blank:
 
 
 bool
-solve(grid_t &grid) {
-    notes_t notes;
+sudoku::solve() {
 
-    initialize_notes(notes, grid);
+#if 1
+    std::printf("unknowns before constraint propagation: %d\n", unknown_count(grid));
+#endif
 
-    // Update grid based on notes.
+    // Make one or more passes attempting to update the grid with values we
+    // are certain about based on initial notes.  For puzzles that are not too
+    // difficult this will find some values and reduce the amount of searching
+    // we have to do.
     int found_update = 1;
     while (found_update) {
         found_update = 0;
 
-        // print_notes(notes);
+        // print_notes();
 
         for (int i = 0; i < n; ++i) {
             for (int j = 0; j < n; ++j) {
                 if (grid[i][j] == 0) {
                     int v = findbit[notes[i][j]];
-                    // std::printf("  grid[%d][%d] = %d has notes:%x bit:%d\n", i, j, grid[i][j], notes[i][j], v);
                     if (v > 0) {
-                        // std::printf("setting %d %d to %d for %x\n", i, j, v, notes[i][j]);
-                        grid[i][j] = v;
-                        update_notes(notes, i, j, v);
+                        set_cell(i, j, v);
                         found_update = 1;
                     }
                 }
@@ -172,15 +198,14 @@ solve(grid_t &grid) {
         }
     }
 
-    // print_grid(grid);
+    // print_grid();
+
+#if 1
+    std::printf("unknowns after constraint propagation: %d\n", unknown_count(grid));
+#endif
 
     // Now do search to find missing values.
-    state_t state;
-    memcpy(&state.grid, &grid, sizeof grid);
-    memcpy(&state.notes, &notes, sizeof notes);
-    bool found = search(state, 0, 0);
-
-    memcpy(&grid, &state.grid, sizeof grid);
+    bool found = search(0, 0);
 
     return found;
 }
@@ -194,17 +219,21 @@ int main(void) {
 
     for (int t = 0; t != numtests; ++t) {
         guesses = 0;
-        grid_t grid;
+        sudoku sudoku;
         for (int i = 0; i < n * n; ++i) {
             int v;
             std::cin >> v;
-            grid[i / n][i % n] = v;
+            if (v < 0 || v > 9) {
+                std::printf("Bad grid[%d][%d] value %d\n", i / n, i % n, v);
+                exit(1);
+            }
+            sudoku.set_cell(i / n, i % n, v);
         }
 
-        // print_grid(grid);
-        solve(grid);
-        print_grid(grid);
-        // print_grid_linear(grid);
+        // sudoku.print_grid();
+        sudoku.solve();
+        sudoku.print_grid();
+        // sudoku.print_grid_linear();
         std::printf("guesses: %ld\n", guesses);
     }
     return 0;
