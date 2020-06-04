@@ -5,6 +5,7 @@
 // Licensed under the MIT license, as described in the accompanying LICENSE file.
 
 #include <iostream>
+#include <assert.h>
 
 constexpr int n = 9;
 constexpr int nn = 3;
@@ -37,17 +38,25 @@ sudoku::sudoku() : grid {0} {
     }
 }
 
-
-// Find the bit that is set if there is a single bit, 0 otherwise.
-typedef char findbit_t[0x200]; // == [1 << n].
-findbit_t findbit;
-
-void
-initialize_findbit() {
-    for (int i = 0; i < n; ++i) {
-        findbit[1 << i] = i + 1;
+// Helper for sudoku notes: when a notes entry has a single bit set, return
+// that bit.  Otherwise, zero or more than one bit is set, return 0.
+class findbit {
+    char setbit[1 << n];
+public:
+    findbit() : setbit {0} {
+        for (int i = 0; i < n; ++i) {
+            setbit[1 << i] = i + 1;
+        }
     }
-}
+    // Returns the 1-based bit that is set if there is a single bit, 0
+    // otherwise.
+    int operator()(int i) const {
+        assert(i < sizeof setbit);
+        return setbit[i];
+    }
+};
+
+findbit findbit;
 
 int
 unknown_count(const grid_t &grid) {
@@ -188,7 +197,7 @@ sudoku::solve() {
         for (int i = 0; i < n; ++i) {
             for (int j = 0; j < n; ++j) {
                 if (grid[i][j] == 0) {
-                    int v = findbit[notes[i][j]];
+                    int v = findbit(notes[i][j]);
                     if (v > 0) {
                         set_cell(i, j, v);
                         found_update = 1;
@@ -212,8 +221,6 @@ sudoku::solve() {
 
 
 int main(void) {
-    initialize_findbit();
-
     int numtests = 0;
     std::cin >> numtests;
 
