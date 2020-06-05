@@ -25,3 +25,37 @@ where N is the number of test cases and each test case has a list of cells A-I
 
 Comments in the input that begin with `#` and extend to the end of the line
 are ignored.
+
+## Sample Output
+
+```
+$ time ./sudoku-solver -v <<'EOF'
+> 1
+> # Puzzle from https://en.wikipedia.org/wiki/Mathematics_of_Sudoku#Constraints_of_clue_geometry
+> 0 0 6 7 0 3 5 0 0
+> 0 0 0 0 4 0 0 0 0
+> 5 0 0 0 0 0 0 0 2
+> 9 0 0 0 0 0 0 0 7
+> 0 3 0 0 0 0 0 4 0
+> 8 0 0 0 0 0 0 0 1
+> 1 0 0 0 0 0 0 0 4
+> 0 0 0 0 0 0 0 0 0
+> 0 5 9 2 6 7 3 1 0
+> EOF
+unknowns before constraint propagation: 59
+unknowns after constraint propagation: 52
+guesses: 18777
+2 4 6 7 1 3 5 8 9
+7 9 8 5 4 2 1 6 3
+5 1 3 6 8 9 4 7 2
+9 2 4 1 5 6 8 3 7
+6 3 1 9 7 8 2 4 5
+8 7 5 3 2 4 6 9 1
+1 6 7 8 3 5 9 2 4
+3 8 2 4 9 1 7 5 6
+4 5 9 2 6 7 3 1 8
+
+real    0m0.006s
+user    0m0.002s
+sys     0m0.002s
+```
