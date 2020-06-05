@@ -29,7 +29,7 @@ public:
     void set_cell(int i, int j, int v);
     bool search(int i, int j);
     bool verify() const;
-    void print_grid() const;
+    void print_grid(char rowsep = '\n') const;
     void print_notes() const;
 };
 
@@ -73,19 +73,12 @@ unknown_count(const grid_t &grid) {
 }
 
 void
-sudoku::print_grid() const {
+sudoku::print_grid(char rowsep) const {
     for (int i = 0; i < n * n; ++i) {
-        std::cout << static_cast<int>(grid[i / n][i % n]) << (i % n == n-1 ? '\n' : ' ');
+        std::cout
+            << static_cast<int>(grid[i / n][i % n])
+            << (i == n * n - 1 ? '\n' : i % n == n-1 ? rowsep : ' ');
     }
-    std::cout << '\n';
-}
-
-void
-print_grid_linear(const grid_t &grid) {
-    for (int i = 0; i < n * n; ++i) {
-        std::cout << static_cast<int>(grid[i / n][i % n]) << ' ';
-    }
-    std::cout << '\n';
 }
 
 void
@@ -246,9 +239,12 @@ skip_comment() {
 }
 
 int main(int argc, char **argv) {
-    for (int ch = 0; (ch = getopt(argc, argv, "v")) != -1; ) {
+    char rowsep = '\n';
+
+    for (int ch = 0; (ch = getopt(argc, argv, "ov")) != -1; ) {
         switch (ch) {
-        case 'v': verbose = 1; break;
+        case 'o': rowsep = ' '; break; // "oneline" option.
+        case 'v': verbose = 1; break;  // "verbose" option.
         }
     }
 
@@ -276,8 +272,7 @@ int main(int argc, char **argv) {
         sudoku.solve();
         if (verbose) { std::printf("guesses: %ld\n", guesses); }
         if (! sudoku.verify()) { std::cout << "no valid solution found\n"; }
-        sudoku.print_grid();
-        // sudoku.print_grid_linear();
+        sudoku.print_grid(rowsep);
     }
     return 0;
 }
