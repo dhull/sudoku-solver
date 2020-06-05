@@ -3,6 +3,10 @@ SHELL=/bin/bash
 
 sudoku-solver: sudoku-solver.cpp
 
+clean:
+	rm -f sudoku-solver
+	rm -rf *.dSYM
+
 check: sudoku-solver
 	@exitval=0; \
 	for ifile in tests/*.in; do \

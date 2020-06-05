@@ -7,6 +7,7 @@
 #include <iostream>
 #include <assert.h>
 #include <unistd.h>
+#include <stdexcept>
 
 constexpr int n = 9;
 constexpr int nn = 3;
@@ -25,6 +26,12 @@ class sudoku {
     notes_t notes;
 public:
     sudoku();
+
+    template<typename Iter> explicit sudoku(Iter first, Iter last);
+
+    sudoku(std::initializer_list<int> const &l) : sudoku(l.begin(), l.end()) {}
+    template<typename Container> explicit sudoku(Container const &c) : sudoku(c.begin(), c.end()) {}
+
     bool solve();
     void set_cell(int i, int j, int v);
     bool search(int i, int j);
@@ -39,6 +46,20 @@ sudoku::sudoku() : grid {0} {
             notes[i][j] = 0x1ff;
         }
     }
+}
+
+template<typename Iter>
+sudoku::sudoku(Iter first, Iter last) : sudoku() {
+    int i = 0;
+    for ( ; first != last; ++i, ++first) {
+        if (i >= n * n) { throw std::length_error("sudoku constructor: initializer too long"); }
+
+        auto v = *first;
+        if (v < 0 || v > 9) { throw std::out_of_range("sudoku constructor: element out of range"); }
+        set_cell(i / n, i % n, v);
+    }
+
+    if (i < n * n) { throw std::length_error("sudoku constructor: initializer too short"); }
 }
 
 // Helper for sudoku notes: when a notes entry has a single bit set, return
@@ -89,7 +110,7 @@ sudoku::print_notes() const {
             for (int k = 0; k < 9; k++) {
                 std::cout << static_cast<char>((notes[i][j] & (1 << k)) ? '1' + k : ' ');
             }
-            std::cout << (j == n-1 ? "\n" : " | ");
+            std::cout << (j == n-1 ? "\n" : j % nn == nn-1 ? " | " : " : ");
         }
         if (i % nn == nn - 1 && i != n - 1) {
             std::cout << "----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+----------\n";
@@ -276,3 +297,33 @@ int main(int argc, char **argv) {
     }
     return 0;
 }
+
+// Syntax for construction from initializer_list:
+//     sudoku test_il {
+//      3, 0, 6, 5, 0, 8, 4, 0, 0,
+//          5, 2, 0, 0, 0, 0, 0, 0, 0,
+//          0, 8, 7, 0, 0, 0, 0, 3, 1,
+//          0, 0, 3, 0, 1, 0, 0, 8, 0,
+//          9, 0, 0, 8, 6, 3, 0, 0, 5,
+//          0, 5, 0, 0, 9, 0, 6, 0, 0,
+//          1, 3, 0, 0, 0, 0, 2, 5, 0,
+//          0, 0, 0, 0, 0, 0, 0, 7, 4,
+//          0, 0, 5, 2, 0, 6, 3, 0, 0,
+//          };
+//     test_il.solve();
+//     test_il.print_grid();
+
+// Syntax for construction from container:
+//     sudoku test_vec(std::vector<int> {
+//          3, 0, 6, 5, 0, 8, 4, 0, 0,
+//              5, 2, 0, 0, 0, 0, 0, 0, 0,
+//              0, 8, 7, 0, 0, 0, 0, 3, 1,
+//              0, 0, 3, 0, 1, 0, 0, 8, 0,
+//              9, 0, 0, 8, 6, 3, 0, 0, 5,
+//              0, 5, 0, 0, 9, 0, 6, 0, 0,
+//              1, 3, 0, 0, 0, 0, 2, 5, 0,
+//              0, 0, 0, 0, 0, 0, 0, 7, 4,
+//              0, 0, 5, 2, 0, 6, 3, 0, 0,
+//              });
+//     test_vec.solve();
+//     test_vec.print_grid();
